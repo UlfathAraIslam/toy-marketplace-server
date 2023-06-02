@@ -9,8 +9,6 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-console.log(process.env.DB_PASS);
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ukgtyy4.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -25,7 +23,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
+    client.connect();
 
     const toyCollection = client.db('toyMarket').collection('toys');
     const addToyCollection = client.db('toyMarket').collection('addedToy');
@@ -39,21 +37,58 @@ async function run() {
 
     app.get('/toys/:id', async(req,res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = {_id: new ObjectId(id)};
+
+      // const options = {
+      //   projection: {toy_name:1, price:1, rating:1,seller:1, category:1, available_quantity:1}
+      // }
+
       const result = await toyCollection.findOne(query);
       res.send(result)
     })
 
+    // get category toy
+
     // addedToy
+    app.get('/addedToy', async(req, res) => {
+      console.log(req.query.email);
+      let query = {};
+      if(req.query?.email){
+        query = {email: req.query.email}
+      }
+      const result = await addToyCollection.find(query).toArray();
+      res.send(result);
 
+    })
 
-    app.post('/addedToy', async (req, res) => {
+    // send data from client to server
+    app.post('/toys/addedToy', async (req, res) => {
       const addedToy = req.body;
       console.log(addedToy);
       const result = await addToyCollection.insertOne(addedToy);
       res.send(result);
+    });
+
+    app.patch('/addedToy/:id', async(req,res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const updatedAddedToy = req.body;
+      console.log(updatedAddedToy);
+      const updatedDoc = {
+        $set: {
+          status: updatedAddedToy.status
+        },
+      };
+      const result = await addToyCollection.updateOne(filter, updatedDoc);
+      res.send(result);
     })
 
+    app.delete('/addedToy/:id', async(req,res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await addToyCollection.deleteOne(query);
+      res.send(result);
+    })
 
 
 
